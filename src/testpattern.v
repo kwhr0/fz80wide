@@ -181,14 +181,14 @@ always @(posedge cpu_clk) begin
 		start_adr <= 13'h1300; // f300
 	end
 	else if (iowr & cpu_adr[7:4] == 4'h6) begin
-		if (cpu_adr[3:0] == 4'h8 & cpu_data[7:0] == 8'hc4)
+		if (cpu_adr[3])
 			dma_seq <= 1;
-		if (cpu_adr[3:0] == 4'h6) begin
+		else if (~cpu_adr[0]) begin
 			if (dma_seq == 1) begin
 				dma_seq <= 2;
 				start_adr <= { start_adr[12:8], cpu_data[7:0] };
 			end
-			if (dma_seq == 2) begin
+			else if (dma_seq == 2) begin
 				dma_seq <= 0;
 				start_adr <= { cpu_data[4:0], start_adr[7:0] };
 			end
@@ -231,52 +231,34 @@ always @(posedge I_pxl_clk) begin
 	end
 end
 
-vram vram0(
-        .dout(trans_data0), //output [7:0] dout
-        .clka(cpu_clk), //input clka
-        .cea(cpu_adr[0] ? mw_u : mw_l), //input cea
-        .reseta(~I_rst_n), //input reseta
-        .clkb(I_pxl_clk), //input clkb
-        .ceb(1'b1), //input ceb
-        .resetb(~I_rst_n), //input resetb
-        .oce(1'b1), //input oce
-        .ada(cpu_adr[12:1] + cpu_adr[0]),
-        .din(cpu_adr[0] ? cpu_data[15:8] : cpu_data[7:0]),
-        .adb(vram_adr[12:1])
-    );
-vram vram1(
-        .dout(trans_data1), //output [7:0] dout
-        .clka(cpu_clk), //input clka
-        .cea(cpu_adr[0] ? mw_l : mw_u), //input cea
-        .reseta(~I_rst_n), //input reseta
-        .clkb(I_pxl_clk), //input clkb
-        .ceb(1'b1), //input ceb
-        .resetb(~I_rst_n), //input resetb
-        .oce(1'b1), //input oce
-        .ada(cpu_adr[12:1]),
-        .din(cpu_adr[0] ? cpu_data[7:0] : cpu_data[15:8]),
-        .adb(vram_adr[12:1])
-    );
+reg [7:0] vram0[0:'hfff], vram1[0:'hfff];
+always @(posedge cpu_clk) begin
+	if (cpu_adr[0] ? mw_u : mw_l) 
+		vram0[cpu_adr[12:1] + cpu_adr[0]] <= 
+			cpu_adr[0] ? cpu_data[15:8] : cpu_data[7:0];
+	if (cpu_adr[0] ? mw_l : mw_u)
+		vram1[cpu_adr[12:1]] <=
+			cpu_adr[0] ? cpu_data[7:0] : cpu_data[15:8];
+end
+reg [11:0] vram_adr1;
+always @(posedge I_pxl_clk)
+	vram_adr1 <= vram_adr[12:1];
+assign trans_data0 = vram0[vram_adr1];
+assign trans_data1 = vram1[vram_adr1];
 
 reg [6:0] H_cnt1;
 always @(posedge I_pxl_clk)
-	H_cnt1 <= H_cnt;
+	H_cnt1 <= H_cnt[6:0];
 
-rowbuf rowbuf(
-        .dout(text_data), //output [7:0] dout
-        .clka(I_pxl_clk), //input clka
-        .cea(transfer), //input cea
-        .reseta(~I_rst_n), //input reseta
-        .clkb(I_pxl_clk), //input clkb
-        .ceb(1'b1), //input ceb
-        .resetb(~I_rst_n), //input resetb
-        .oce(1'b1), //input oce
-        .ada({ 4'b0000, H_cnt1 }), //input [10:0] ada
+reg [7:0] rowbuf[0:'h7f];
+always @(posedge I_pxl_clk)
 	// trans_data is inverted because of delay 1 clock
-        .din(vram_adr[0] ? trans_data0 : trans_data1), //input [7:0] din
-    //  .din(vram_adr[0] ? trans_data1 : trans_data0), //input [7:0] din
-        .adb({ 4'b0000, rowbuf_adr }) //input [10:0] adb
-    );
+	if (transfer)
+		rowbuf[H_cnt1] <= vram_adr[0] ? trans_data0 : trans_data1;
+reg [6:0] rowbuf_adr1;
+always @(posedge I_pxl_clk)
+	rowbuf_adr1 <= rowbuf_adr;
+assign text_data = rowbuf[rowbuf_adr1];
 
 wire hvalid = De_hcnt >= H_START & De_hcnt < H_START + WIDTH;
 wire vvalid = De_vcnt >= V_START & De_vcnt < V_START + HEIGHT;
@@ -322,8 +304,13 @@ end
 
 ///
 
-font8x8 font(.dout(chrline_c), .clk(I_pxl_clk), .oce(1'b1), .ce(1'b1), .reset(~I_rst_n),
-            .ad({ text_data, chcnt[3:1] }));
+reg [7:0] cg8[0:'h7ff];
+initial $readmemh("font.mem", cg8);
+reg [10:0] cgadr;
+always @(posedge I_pxl_clk)
+	cgadr <= { text_data, chcnt[3:1] };
+assign chrline_c = cg8[cgadr];
+
 wire [3:0] text_data_l = text_data[3:0];
 wire [3:0] text_data_u = text_data[7:4];
 wire dotl = text_data_l[chcnt[3:2]];

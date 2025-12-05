@@ -4,15 +4,16 @@
 
 // MIT License
 
-// not implemented: IM2, WAIT
+// not implemented: IM2
 
 module fz80wide(clk, reset, pc_out, insn_in, adr_out, data_in, data_out,
-	mw_l, mw_u, iord, iowr, intreq, intack, nmireq, nmiack, busreq, busack);
-input clk, reset, intreq, nmireq, busreq;
+	mw_l, mw_u, iord, iowr, flip,
+	waitreq, intreq, intack, nmireq, nmiack, busreq, busack);
+input clk, reset, waitreq, intreq, nmireq, busreq;
 input [31:0] insn_in;
 input [15:0] data_in;
 output [15:0] pc_out, adr_out, data_out;
-output mw_l, mw_u, iord, iowr, intack, nmiack, busack;
+output mw_l, mw_u, iord, iowr, flip, intack, nmiack, busack;
 
 reg [15:0] pc, sp;
 reg [7:0] rb[0:1], rc[0:1], rd[0:1], re[0:1], rh[0:1], rl[0:1];
@@ -76,7 +77,7 @@ function [15:0] sel4x16;
 	end
 endfunction
 
-// BUS
+// BUS / WAIT
 
 wire accept = ~(dbl_state & ~state) & ~exec_ret;
 reg busack, busack1;
@@ -86,23 +87,32 @@ always @(posedge clk) begin
 	if (reset) busack1 <= 1'b0;
 	else busack1 <= busack;
 end
-wire clken = ~busack;
+
+reg wait1;
+always @(posedge clk)
+	if (reset) wait1 <= 1'b0;
+	else wait1 <= waitreq;
+
+wire clken = ~waitreq & ~busack;
 
 reg [31:0] insn_in_l;
 reg [15:0] data_in_l;
 always @(posedge clk)
-	if (~busack1) begin
+	if (~(waitreq & wait1) & ~busack1) begin
 		insn_in_l <= insn_in;
 		data_in_l <= data_in;
 	end
 wire [31:0] insn_t = busack1 ? insn_in_l : insn_in;
-wire [15:0] data = busack1 ? data_in_l : data_in;
+wire [15:0] data = wait1 | busack1 ? data_in_l : data_in;
+
+reg flip;
+always @(posedge clk)
+	if (clken) flip <= ~flip;
 
 //
 // DECODE
 //
 
-wire force_nop;
 wire [7:0] p0 = sel4x8(pc[1:0], insn_t);
 wire [7:0] s = sel4x8(pc[1:0], { insn_t[7:0], insn_t[31:8] });
 wire multi_pre = &p0[7:6] & p0[4:0] == 5'b11101 & &s[7:6] & s[4:0] == 5'b11101;
@@ -288,7 +298,7 @@ wire b_prim3 = ~|p[7:6] & p[3:0] == 4'b0001 |
 	p[7:4] == 4'b1100 & (p[3:1] == 3'b001 | p[3:1] == 3'b110) & p[0];
 wire [1:0] b_prim = { b_prim2 | b_prim3, ~b_prim2 };
 
-wire b_index3 = s[2:0] == 3'b110 & ~(~s[7] & s[5:3] == 3'b110) |
+wire b_index3 = (s[7] ? ~s[6] : s[5:3] != 3'b110) & s[2:0] == 3'b110 |
 	s[7:3] == 5'b01110 & s[2:0] != 3'b110 |
 	s[7:1] == 7'b0011010;
 wire b_index4 = s == 8'h21 |
@@ -332,7 +342,7 @@ always @(posedge clk)
 	if (reset) exec_ret1 <= 0;
 	else if (clken) exec_ret1 <= exec_ret;
 wire [15:0] wd_hl;
-wire [15:0] nextpc_imm = nmiack ?  16'h0066 :
+wire [15:0] nextpc_imm = nmiack ? 16'h0066 :
 	i[RST] ? { insn[5:3], 3'b000 } : insn[23:8];
 wire [15:0] nextpc_s = exec_ret1 ? data : nextpc_imm;
 wire [15:0] nextpc_rel = nextpc_normal + { {8{ insn[15] }}, insn[15:8] };
@@ -340,7 +350,6 @@ wire [15:0] nextpc = exec_jr ? nextpc_rel : i[JPHL] ? wd_hl :
 	exec_jp | exec_call | i[RST] | exec_ret1 | nmiack ?
 	nextpc_s : nextpc_normal;
 
-wire alu_y_is0;
 wire match = i1[CPX] & alu_y_is0;
 reg match1;
 always @(posedge clk)
@@ -352,7 +361,7 @@ reg active;
 always @(posedge clk)
 	if (reset) active <= 0;
 	else if (clken) active <= 1;
-assign pc_out = active & ~stay & ~(dbl_state & ~state) ? nextpc : pc;
+assign pc_out = active & ~waitreq & ~stay & ~(dbl_state & ~state) ? nextpc : pc;
 always @(posedge clk)
 	if (reset) pc <= 16'h0;
 	else if (clken) pc <= pc_out;
@@ -421,12 +430,12 @@ wire [15:0] wd_s0 = { wd16[15:8], mw_s0_u ? wd16[7:0] : wd8 };
 // EXEC
 //
 
-reg [31:0] insn1;
+reg [23:0] imm1;
 reg [7:0] o1;
 reg [I1MAX:0] i1;
 reg preCB1, preIndex1, indexSw1, dbl_state1;
 always @(posedge clk) if (clken) begin
-	insn1 <= insn;
+	imm1 <= insn[31:8];
 	i1 <= i[I1MAX:0];
 	o1 <= o;
 	preCB1 <= preCB;
@@ -472,7 +481,7 @@ always @(posedge clk)
 wire daa_l = f[4] | a[3:0] >= 4'b1010;
 wire daa_u = f[0] | (a[7:4] >= 4'b1010 | a[7:4] == 4'b1001 & a[3:0] >= 4'b1010);
 wire [7:0] daa_adj = { 1'b0, daa_u, daa_u, 2'b00, daa_l, daa_l, 1'b0 };
-wire [7:0] sel_i = sel4x8(sel_i_sel, { insn1[31:8], daa_adj });
+wire [7:0] sel_i = sel4x8(sel_i_sel, { imm1, daa_adj });
 wire [7:0] alu_b = |sel_i_sel ? sel_i : alu_r;
 
 // arith (8bit)
@@ -513,7 +522,7 @@ reg [1:0] sel_logic;
 reg [7:0] logic_m;
 always @(posedge clk) if (clken) begin
 	sel_logic <= { i[XOR] | l_or , i[XOR] | l_and };
-	logic_m <= 8'h01 << o[5:3] ^ {8{o[7:6] == 2'b10}};
+	logic_m <= 8'h01 << o[5:3] ^ {8{ o[7:6] == 2'b10 }};
 end
 wire [7:0] logic_a = preCB1 ? logic_m : a;
 wire [7:0] logic_y = sel4x8(sel_logic,
@@ -631,7 +640,7 @@ always @(posedge clk)
 
 reg t_load_b1;
 always @(posedge clk)
-	if (clken) t_load_b1 <= i[DJNZ] | i[LDX] | i[CPX] & ~exit16 |
+	if (clken) t_load_b1 <= i[DJNZ] | i[LDX] | i[CPX] & ~exit16 | i[IOX] |
 		load8 & sel_load == 3'b000 |
 		load16 & o[5:4] == 2'b00;
 wire load_b1 = t_load_b1 & ~match01;
@@ -642,7 +651,7 @@ always @(posedge clk)
 		rb[1] <= 8'h00;
 	end
 	else if (ren & load_b1)
-		rb[sel_bcdehl] <= i1[BLOCK] ? alu16_y[15:8] : fwd_b;
+		rb[sel_bcdehl] <= i1[IOX] ? alu_y : i1[BLOCK] ? alu16_y[15:8] : fwd_b;
 
 // C register
 
@@ -699,7 +708,7 @@ always @(posedge clk)
 
 reg t_load_h1;
 always @(posedge clk)
-	if (clken) t_load_h1 <= i[EXDEHL] | i[LDX] | i[CPX] & ~exit16 |
+	if (clken) t_load_h1 <= i[EXDEHL] | i[LDX] | i[CPX] & ~exit16 | i[IOX] |
 		load_hl |
 		load8 & sel_load == 3'b100 |
 		load16 & o[5:4] == 2'b10;
@@ -727,7 +736,7 @@ always @(posedge clk)
 
 reg t_load_l1;
 always @(posedge clk)
-	if (clken) t_load_l1 <= i[EXDEHL] | i[LDX] | i[CPX] & ~exit16 |
+	if (clken) t_load_l1 <= i[EXDEHL] | i[LDX] | i[CPX] & ~exit16 | i[IOX] |
 		load_hl |
 		load8 & sel_load == 3'b101 |
 		load16 & o[5:4] == 2'b10;
@@ -887,31 +896,34 @@ always @(posedge clk)
 		iff1 <= 1'b0;
 		iff2 <= 1'b0;
 	end
-	else if (nmiedge & accept) begin
-		iff1 <= 1'b0;
-		if (i1[EIDI]) iff2 <= o1[3];
-	end
-	else if (intreq & iff1 & accept) begin
-		iff1 <= 1'b0;
-		iff2 <= 1'b0;
-	end
-	else if (i1[EIDI]) begin
-		iff1 <= o1[3];
-		iff2 <= o1[3];
-	end
-	else if (i1[RETIN]) iff1 <= iff2;
+	else if (clken)
+		if (nmiedge & accept) begin
+			iff1 <= 1'b0;
+			if (i1[EIDI]) iff2 <= o1[3];
+		end
+		else if (intreq & iff1 & accept) begin
+			iff1 <= 1'b0;
+			iff2 <= 1'b0;
+		end
+		else if (i1[EIDI]) begin
+			iff1 <= o1[3];
+			iff2 <= o1[3];
+		end
+		else if (i1[RETIN]) iff1 <= iff2;
 
 always @(posedge clk)
 	if (reset) nmiack <= 1'b0;
-	else if (nmiack) nmiack <= 1'b0;
-	else if (nmiedge & accept) nmiack <= 1'b1;
+	else if (clken)
+		if (nmiack) nmiack <= 1'b0;
+		else if (nmiedge & accept) nmiack <= 1'b1;
 
 always @(posedge clk)
 	if (reset) intack <= 1'b0;
-	else if (intack) intack <= 1'b0;
-	else if (intreq & iff1 & accept) intack <= 1'b1;
+	else if (clken)
+		if (intack) intack <= 1'b0;
+		else if (intreq & iff1 & accept) intack <= 1'b1;
 
-wire [15:0] bc = { fwd_b, fwd_c }, de = { fwd_d, fwd_e }, hl = { fwd_h, fwd_l }, af = { fwd_a, fwd_f };
+wire [15:0] bc = { fwd_b, fwd_c }, de = { fwd_d, fwd_e }, hl = { fwd_h, fwd_l };
 initial $monitor("%04x %x %02x %04x %04x %04x %02x %02x  %x%xM %04x %04x %04x",
 	pc, force_nop, o, bc, de, hl, fwd_a, fwd_f,  mw_u, mw_l, adr_out, data_out, data_in);
 endmodule

@@ -1,21 +1,17 @@
-module ram3(clka, ada, dina, douta, reseta, cea, ocea, wrea, clkb, adb, dinb, doutb, resetb, ceb, oceb, wreb);
-input clka, reseta, cea, ocea, wrea, clkb, resetb, ceb, oceb, wreb;
+module ram3(clk, ada, douta, adb, dinb, doutb, wreb);
+input clk, wreb;
 input [13:0] ada, adb;
-input [7:0] dina, dinb;
+input [7:0] dinb;
 output [7:0] douta, doutb;
 reg [7:0] douta, doutb;
 reg [7:0] mem[0:'h3fff];
 initial $readmemh("ram3.mem", mem);
-always @(posedge clka)
-	if (cea & wrea) mem[ada] <= dina;
-always @(posedge clkb)
-	if (ceb & wreb) mem[adb] <= dinb;
-always @(posedge clka)
-	if (cea & wrea) douta <= dina;
-	else if (ceb & wreb & ada == adb) douta <= dinb;
+always @(posedge clk)
+	if (wreb) mem[adb] <= dinb;
+always @(posedge clk)
+	if (wreb & ada == adb) douta <= dinb;
 	else douta <= mem[ada];
-always @(posedge clkb)
-	if (ceb & wreb) doutb <= dinb;
-	else if (cea & wrea & ada == adb) doutb <= dina;
+always @(posedge clk)
+	if (wreb) doutb <= dinb;
 	else doutb <= mem[adb];
 endmodule
