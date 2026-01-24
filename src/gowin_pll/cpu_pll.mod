@@ -7,7 +7,7 @@
 
 -mod_name cpu_pll_MOD
 -file_name cpu_pll_mod
--path /home/kuwahara/hdmi/src/gowin_pll/
+-path /home/kuwahara/fz80wide/src/gowin_pll/
 -type PLL_ADV
 -file_type vlg
 -ssc false

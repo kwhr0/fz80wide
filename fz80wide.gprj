@@ -14,10 +14,7 @@
         <File path="src/gowin_pll/vesa_pll_mod.v" type="file.verilog" enable="1"/>
         <File path="src/i2s.v" type="file.verilog" enable="1"/>
         <File path="src/pll_init.v" type="file.verilog" enable="1"/>
-        <File path="src/ram0.v" type="file.verilog" enable="1"/>
-        <File path="src/ram1.v" type="file.verilog" enable="1"/>
-        <File path="src/ram2.v" type="file.verilog" enable="1"/>
-        <File path="src/ram3.v" type="file.verilog" enable="1"/>
+        <File path="src/ram.v" type="file.verilog" enable="1"/>
         <File path="src/testpattern.v" type="file.verilog" enable="1"/>
         <File path="src/top.v" type="file.verilog" enable="1"/>
         <File path="src/console.cst" type="file.cst" enable="1"/>

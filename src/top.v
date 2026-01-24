@@ -68,13 +68,17 @@ assign data_in = {
 	iord ? in_data : sel4x8(sel_adr, { ramd3, ramd2, ramd1, ramd0 })
 };
 
-ram0 ram0(.clk(cpu_clk), .ada(iadr0), .douta(insn[7:0]),
+ram #(.FILE("ram0.mem"))
+	ram0(.clk(cpu_clk), .ada(iadr0), .douta(insn[7:0]),
 	.adb(dadr0), .dinb(adr[0] ? du : dl), .doutb(ramd0), .wreb(we0));
-ram1 ram1(.clk(cpu_clk), .ada(iadr1), .douta(insn[15:8]),
+ram #(.FILE("ram1.mem"))
+	ram1(.clk(cpu_clk), .ada(iadr1), .douta(insn[15:8]),
 	.adb(dadr),  .dinb(adr[0] ? dl : du), .doutb(ramd1), .wreb(we1));
-ram2 ram2(.clk(cpu_clk), .ada(iadr2), .douta(insn[23:16]),
+ram #(.FILE("ram2.mem"))
+	ram2(.clk(cpu_clk), .ada(iadr2), .douta(insn[23:16]),
 	.adb(dadr),  .dinb(adr[0] ? du : dl), .doutb(ramd2), .wreb(we2));
-ram3 ram3(.clk(cpu_clk), .ada(iadr3), .douta(insn[31:24]),
+ram #(.FILE("ram3.mem"))
+	ram3(.clk(cpu_clk), .ada(iadr3), .douta(insn[31:24]),
 	.adb(dadr),  .dinb(adr[0] ? dl : du), .doutb(ramd3), .wreb(we3));
 
 reg intreq;
