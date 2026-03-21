@@ -1,18 +1,20 @@
 //Copyright (C)2014-2025 Gowin Semiconductor Corporation.
 //All rights reserved.
 //File Title: Template file for instantiation
-//Tool Version: V1.9.11.03 Education
-//Part Number: GW5AT-LV60PG484AC1/I0
-//Device: GW5AT-60
-//Device Version: B
-//Created Time: Sat Nov 15 20:14:08 2025
+//Tool Version: V1.9.12.01
+//IP Version: 1.0
+//Part Number: GW5A-LV25MG121NC1/I0
+//Device: GW5A-25
+//Device Version: A
+//Created Time: Fri Mar 20 14:55:07 2026
 
 //Change the instance name and port connections to the signal names
 //--------Copy here to design--------
 
-    cpu_pll_MOD your_instance_name(
+    pll_MOD your_instance_name(
         .lock(lock), //output lock
         .clkout0(clkout0), //output clkout0
+        .clkout1(clkout1), //output clkout1
         .mdrdo(mdrdo), //output [7:0] mdrdo
         .clkin(clkin), //input clkin
         .reset(reset), //input reset

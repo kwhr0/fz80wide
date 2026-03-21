@@ -1,16 +1,18 @@
 //Copyright (C)2014-2025 Gowin Semiconductor Corporation.
 //All rights reserved.
 //File Title: IP file
-//Tool Version: V1.9.11.03 Education
-//Part Number: GW5AT-LV60PG484AC1/I0
-//Device: GW5AT-60
-//Device Version: B
-//Created Time: Tue Nov 11 14:04:29 2025
+//Tool Version: V1.9.12.01
+//IP Version: 1.0
+//Part Number: GW5A-LV25MG121NC1/I0
+//Device: GW5A-25
+//Device Version: A
+//Created Time: Fri Mar 20 14:55:07 2026
 
-module vesa_pll_MOD (lock, clkout0, mdrdo, clkin, reset, mdclk, mdopc, mdainc, mdwdi);
+module pll_MOD (lock, clkout0, clkout1, mdrdo, clkin, reset, mdclk, mdopc, mdainc, mdwdi);
 
 output lock;
 output clkout0;
+output clkout1;
 output [7:0] mdrdo;
 input clkin;
 input reset;
@@ -19,7 +21,6 @@ input [1:0] mdopc;
 input mdainc;
 input [7:0] mdwdi;
 
-wire clkout1;
 wire clkout2;
 wire clkout3;
 wire clkout4;
@@ -61,20 +62,20 @@ PLLA PLLA_inst (
 );
 
 defparam PLLA_inst.FCLKIN = "50";
-defparam PLLA_inst.IDIV_SEL = 1;
+defparam PLLA_inst.IDIV_SEL = 2;
 defparam PLLA_inst.FBDIV_SEL = 1;
-defparam PLLA_inst.ODIV0_SEL = 8;
-defparam PLLA_inst.ODIV1_SEL = 8;
+defparam PLLA_inst.ODIV0_SEL = 31;
+defparam PLLA_inst.ODIV1_SEL = 14;
 defparam PLLA_inst.ODIV2_SEL = 8;
 defparam PLLA_inst.ODIV3_SEL = 8;
 defparam PLLA_inst.ODIV4_SEL = 8;
 defparam PLLA_inst.ODIV5_SEL = 8;
 defparam PLLA_inst.ODIV6_SEL = 8;
-defparam PLLA_inst.MDIV_SEL = 27;
+defparam PLLA_inst.MDIV_SEL = 45;
 defparam PLLA_inst.MDIV_FRAC_SEL = 0;
-defparam PLLA_inst.ODIV0_FRAC_SEL = 0;
+defparam PLLA_inst.ODIV0_FRAC_SEL = 2;
 defparam PLLA_inst.CLKOUT0_EN = "TRUE";
-defparam PLLA_inst.CLKOUT1_EN = "FALSE";
+defparam PLLA_inst.CLKOUT1_EN = "TRUE";
 defparam PLLA_inst.CLKOUT2_EN = "FALSE";
 defparam PLLA_inst.CLKOUT3_EN = "FALSE";
 defparam PLLA_inst.CLKOUT4_EN = "FALSE";
@@ -139,4 +140,4 @@ defparam PLLA_inst.LPF_RES = 3'bXXX;
 defparam PLLA_inst.LPF_CAP = 2'b00;
 defparam PLLA_inst.SSC_EN = "FALSE";
 
-endmodule //vesa_pll_MOD
+endmodule //pll_MOD
