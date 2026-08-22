@@ -6,7 +6,7 @@
 //Part Number: GW5A-LV25MG121NC1/I0
 //Device: GW5A-25
 //Device Version: A
-//Created Time: Fri Mar 20 14:55:07 2026
+//Created Time: Sat Aug 22 17:35:19 2026
 
 module pll_MOD (lock, clkout0, clkout1, mdrdo, clkin, reset, mdclk, mdopc, mdainc, mdwdi);
 
@@ -62,18 +62,18 @@ PLLA PLLA_inst (
 );
 
 defparam PLLA_inst.FCLKIN = "50";
-defparam PLLA_inst.IDIV_SEL = 2;
+defparam PLLA_inst.IDIV_SEL = 1;
 defparam PLLA_inst.FBDIV_SEL = 1;
-defparam PLLA_inst.ODIV0_SEL = 31;
-defparam PLLA_inst.ODIV1_SEL = 14;
+defparam PLLA_inst.ODIV0_SEL = 20;
+defparam PLLA_inst.ODIV1_SEL = 10;
 defparam PLLA_inst.ODIV2_SEL = 8;
 defparam PLLA_inst.ODIV3_SEL = 8;
 defparam PLLA_inst.ODIV4_SEL = 8;
 defparam PLLA_inst.ODIV5_SEL = 8;
 defparam PLLA_inst.ODIV6_SEL = 8;
-defparam PLLA_inst.MDIV_SEL = 45;
+defparam PLLA_inst.MDIV_SEL = 14;
 defparam PLLA_inst.MDIV_FRAC_SEL = 0;
-defparam PLLA_inst.ODIV0_FRAC_SEL = 2;
+defparam PLLA_inst.ODIV0_FRAC_SEL = 0;
 defparam PLLA_inst.CLKOUT0_EN = "TRUE";
 defparam PLLA_inst.CLKOUT1_EN = "TRUE";
 defparam PLLA_inst.CLKOUT2_EN = "FALSE";
